@@ -1,11 +1,21 @@
 {
     "name": "omnisense/omnilang",
     "type": "library",
-    "description": "Reserved, not released yet: Translate a text or a page, whatever the engine, under any PHP host.",
+    "description": "Omnilang: translate a text or a page, whatever the engine, under any PHP host - plain text or HTML with its tags kept, formality where the engine has it, the source language detected, glossaries, whole documents. Four contracts (translate, detect, glossary, documents), a registry that falls back from one engine to the next, providers as packages of their own (omnilang/deepl, omnilang/google, omnilang/azure, omnilang/amazon, omnilang/libretranslate), each declaring its usage policy (rate limits, rights, attribution, data retention), enforced on every call and tightened by a site's configuration - on omnisense/contracts.",
     "keywords": [
-        "omnilang",
-        "reserved",
-        "framework-agnostic"
+        "translation",
+        "machine-translation",
+        "translate",
+        "language-detection",
+        "glossary",
+        "document-translation",
+        "deepl",
+        "google-translate",
+        "azure-translator",
+        "amazon-translate",
+        "libretranslate",
+        "framework-agnostic",
+        "omnilang"
     ],
     "homepage": "https://github.com/glitchr-omnisense/omnilang",
     "license": "MIT",
@@ -16,11 +26,35 @@
         }
     ],
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.2",
+        "ext-mbstring": "*",
+        "omnisense/contracts": "^1.0@dev",
+        "symfony/http-client-contracts": "^3.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.0",
+        "symfony/http-client": "^6.4|^7.0|^8.0"
+    },
+    "suggest": {
+        "omnilang/deepl": "DeepL API: translate (text, HTML, formality), glossaries, documents; a key",
+        "omnilang/google": "Google Cloud Translation - Advanced (v3): translate, detect, glossaries, documents; an OAuth access token",
+        "omnilang/azure": "Azure AI Translator: translate, detect, documents; a key and its region",
+        "omnilang/amazon": "Amazon Translate: translate (formality), terminologies, documents; IAM credentials (Signature Version 4)",
+        "omnilang/libretranslate": "LibreTranslate, self-hosted (AGPL-3.0): translate, detect, files; no key by default"
     },
     "autoload": {
         "psr-4": {
             "Omnilang\\": ""
+        },
+        "exclude-from-classmap": [
+            "/Tests/",
+            "/docker/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Omnilang\\Tests\\": "Tests/"
         }
     },
     "extra": {

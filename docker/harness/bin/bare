@@ -1,0 +1,64 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * Omnilang in plain PHP: no bundle, no container, no framework. A registry
+ * of two engines answering from what they hold - one that knows no HTML,
+ * one that does - and a fallback from the first to the second; a
+ * detection, a glossary made and applied, a document translated; then a
+ * provider's JSON call answered with no network (a translation, a 404, an
+ * error whose message keeps the key out). Prints what happened and every
+ * class and file PHP loaded, as JSON.
+ */
+
+use Omnilang\Exception\ProviderException;
+use Omnilang\Http\JsonClient;
+use Omnilang\Model\Document;
+use Omnilang\Model\DocumentQuery;
+use Omnilang\Model\Language;
+use Omnilang\Model\TranslationQuery;
+use Omnilang\Registry;
+use Omnilang\Testing\FixedProviderFactory;
+use Omnilang\Testing\RecordedHttpClient;
+
+require getenv('OMNILANG_AUTOLOAD') ?: '/harness/vendor/autoload.php';
+
+$registry = new Registry([
+    new FixedProviderFactory(['en' => ['Bonjour' => 'Hello']], [], 'plain'),
+    new FixedProviderFactory(['en' => ['Bonjour' => 'Good morning', '<p>Merci</p>' => '<p>Thank you</p>', 'Chambre double' => 'Double room']], ['Guten Morgen' => 'de'], 'rich'),
+], [
+    'plain' => ['factory' => 'plain', 'options' => ['html' => false]],
+    'rich' => ['factory' => 'rich'],
+], fallback: ['plain', 'rich']);
+
+$hello = $registry->translate(TranslationQuery::text('Bonjour', 'en', from: 'fr'))[0];
+$report['capabilities'] = $registry->get('rich')->capabilities()->toArray();
+$report['translate'] = [$hello->text, $hello->provider];
+$html = $registry->translate(TranslationQuery::html('<p>Merci</p>', 'en'))[0];
+$report['html'] = [$html->text, $html->provider];
+$report['detect'] = array_map(static fn ($d) => [$d->language->code, $d->provider], $registry->detect('Guten Morgen'));
+$glossary = $registry->glossary('rich')->createGlossary('Rooms', Language::of('fr'), Language::of('en'), ['Chambre double' => 'Twin room']);
+$room = $registry->translate(new TranslationQuery('Chambre double', 'en', 'fr', glossaries: ['rich' => $glossary->id]))[0];
+$report['glossary'] = [$room->text, $room->provider, $room->glossary];
+$job = $registry->translateDocument(new DocumentQuery(new Document("Bonjour\nChambre double\n", 'menu.txt'), 'en'));
+$report['document'] = [$job->status->value, $job->provider, $registry->documents($job->provider)->documentResult($job)->content, $job->result?->filename];
+
+$http = RecordedHttpClient::routes([
+    '~^POST https://api\.example\.org/translate~' => [200, '{"translations": [{"text": "Hello"}]}'],
+    '~^POST https://api\.example\.org/broken~' => [500, '<h1>Internal error</h1>'],
+]);
+$json = new JsonClient($http, 'Example', ['Authorization' => 'Key not-a-real-key', 'User-Agent' => 'lang-bare/1.0']);
+$data = $json->request('POST', 'https://api.example.org/translate', ['json' => ['text' => ['Bonjour'], 'target_lang' => 'EN']]);
+$report['json'] = [$data?->string('translations.0.text'), $http->header('User-Agent')];
+$report['json-404'] = $json->get('https://api.example.org/missing');
+try {
+    $json->request('POST', 'https://api.example.org/broken', ['json' => ['text' => ['Bonjour']]]);
+} catch (ProviderException $e) {
+    $report['json-error'] = [$e->getMessage(), $e->status, str_contains(serialize($e->getTrace()), 'not-a-real-key')];
+}
+
+echo json_encode($report + ['loaded' => [
+    'symbols' => [...get_declared_classes(), ...get_declared_interfaces(), ...get_declared_traits()],
+    'files' => array_map('realpath', get_included_files()),
+    'eager' => array_map('realpath', array_values(is_file($f = dirname((string) (new ReflectionClass(Composer\Autoload\ClassLoader::class))->getFileName()).'/autoload_files.php') ? require $f : [])),
+]], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), "\n";
