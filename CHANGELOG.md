@@ -2,6 +2,14 @@
 
 ## 1.x (unreleased)
 
+- 2026-11-10, on omnisense/contracts' round 2 (needs contracts 5bac28b; still `^1.0@dev`): a
+  limit counted in characters (`"unit": "characters"`) is spent by what each call sends -
+  `Policy\GuardedTranslator` reports each request's characters (`TranslationQuery::characters()`),
+  `GuardedDetector` its texts' - and a request over what is left is refused before it is sent;
+  limits in requests count as before. `Testing\MockHttp` holds contracts' `Testing\MockHttp`
+  (final, so not extended): the same API, a header sent several times read joined, `fields()`
+  added, `form()` (multipart, omnilang's own) kept. Tests: PolicyTest (a quota in characters, a cut
+  query), MockHttpTest. docs/policies.md: quotas in characters.
 - 2026-11-10: the family written, on omnisense/contracts from its first commit. Four contracts:
   `TranslatorInterface` (translate, languages), `DetectorInterface`, `GlossaryInterface`,
   `DocumentsInterface`. Models: `Language` (BCP 47, normalised), `TranslationQuery` (texts, target,

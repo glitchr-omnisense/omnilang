@@ -17,8 +17,8 @@ says:
 - the **rights**: commercial use, caching, storage, redistribution, the **attribution** to show
   beside a translation (DeepL's and Google's are required);
 - the **requirements**: a key;
-- the **provenance**: the pages it was read from, the day, and notes - the quotas in characters a
-  call count cannot express, the **data retention** (what the engine keeps of the texts, and for
+- the **provenance**: the pages it was read from, the day, and notes - the quotas by plan or tier,
+  which the engine cannot declare for every site, the **data retention** (what the engine keeps of the texts, and for
   how long), what was not found.
 
 Unknown stays unknown: a right the pages read do not state is `unknown`, never guessed.
@@ -46,8 +46,20 @@ forbid it is refused when the engine is first used (`UsageNotPermitted`).
 
 ## Quotas in characters
 
-Engines sell characters, not calls. The guard counts calls; `Translation::$characters` gives what
-each translation counted (DeepL's billed characters), for a site that meters its own spending. A
+Engines sell characters, not calls. A limit counted in characters says so with `"unit":
+"characters"`: each request of `translate` reports its texts' characters (Unicode code points,
+whitespace included, as the engines bill them) and each `detect` its texts', so the guard refuses
+a request whose characters are over what is left, before it is sent. A limit in requests (the
+default unit) still counts the request. Google declares its 6,000,000 characters a minute this way;
+a plan's quota (DeepL's, Azure's tier) is the site's to declare:
+
+```php
+'policy' => ['rateLimits' => [['max' => 500000, 'window' => 'month', 'unit' => 'characters', 'operations' => ['translate']]]],
+```
+
+Documents are billed by the engine once translated, not by the texts sent: they are counted in
+requests only. `Translation::$characters` gives what each translation counted (DeepL's billed
+characters), for a site that meters its own spending. A
 spent quota answers an error the fallback passes over: DeepL's 456, Google's 403. Amazon, paid by
 the character, has no quota to spend; its throttling answers 400 (`TooManyRequestsException`),
 passed over too.

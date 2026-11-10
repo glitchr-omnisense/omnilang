@@ -8,7 +8,9 @@ use Omnisense\Contracts\Policy\PolicyGuard;
 
 /**
  * A provider's translations behind its guard: each call is the operation
- * "translate" or "languages". A query holding more texts or characters
+ * "translate" or "languages". A translation reports its characters (Unicode
+ * code points, as engines bill them) to a limit counted in "characters"
+ * (`"unit": "characters"`); a limit in requests counts the request. A query holding more texts or characters
  * than one request of the provider may (Capabilities::$maxTexts,
  * $maxCharacters) is sent in as many requests as it takes, each one
  * guarded - a text longer than a request alone goes on its own, for the
@@ -28,7 +30,7 @@ final class GuardedTranslator extends Guarded implements TranslatorInterface
         $capabilities = $this->provider->capabilities();
         $translations = [];
         foreach (self::chunks($query, $capabilities->maxTexts, $capabilities->maxCharacters) as $chunk) {
-            array_push($translations, ...$this->guard->call('translate', fn () => $this->provider->translate($chunk)));
+            array_push($translations, ...$this->guard->call('translate', fn () => $this->provider->translate($chunk), amounts: ['characters' => $chunk->characters()]));
         }
 
         return $translations;

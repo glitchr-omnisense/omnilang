@@ -51,6 +51,37 @@ final class PolicyTest extends TestCase
         $registry->translate(TranslationQuery::text(['Bonjour', 'Bonjour'], 'en'), ['b']);
     }
 
+    public function testAQuotaInCharactersCountsEachTranslationsCharacters(): void
+    {
+        $registry = self::registry(['a' => ['policy' => ['rateLimits' => [['max' => 20, 'window' => 'month', 'unit' => 'characters', 'operations' => ['translate', 'detect']]]]]], ['Salut' => 'fr']);
+
+        $registry->translator('a')->translate(TranslationQuery::text(['Bonjour', 'Bonjour'], 'en'));
+        self::assertSame(6, $registry->guard('a')->remaining('translate'), '14 characters spent, 6 left');
+        $registry->translator('a')->languages();
+        $registry->detector('a')->detect(['Salut']);
+        self::assertSame(1, $registry->guard('a')->remaining('translate'), 'languages() is not under the limit; detect() spends its 5 characters');
+
+        try {
+            $registry->translator('a')->translate(TranslationQuery::text('Bonjour', 'en'));
+            self::fail('7 characters over the 1 left are refused before the call.');
+        } catch (UsageLimitReachedException $e) {
+            self::assertSame('characters', $e->limit?->unit->value);
+        }
+        self::assertSame('b', $registry->translateText('Bonjour', 'en')->provider, 'the fallback passes over it');
+    }
+
+    public function testACutQueryReportsEachRequestsCharacters(): void
+    {
+        $registry = self::registry(['b' => ['max_texts' => 1, 'policy' => ['rateLimits' => [
+            ['max' => 100, 'window' => 'day', 'unit' => 'characters', 'operations' => ['translate']],
+            ['max' => 10, 'window' => 'day', 'operations' => ['translate']],
+        ]]]]);
+
+        $registry->translator('b')->translate(TranslationQuery::text(['Bonjour', 'Bonjour', 'Bonjour'], 'en'));
+        $guard = $registry->guard('b');
+        self::assertSame(7, $guard->remaining('translate'), 'three requests: 79 characters left, 7 requests left');
+    }
+
     public function testASiteMayTightenAPolicyNeverLoosenIt(): void
     {
         $policy = self::registry(['a' => ['policy' => ['rights' => ['commercial' => 'forbidden']]]])->policy('a');
@@ -68,11 +99,14 @@ final class PolicyTest extends TestCase
         $registry->translator('a');
     }
 
-    /** @param array<string, array<string, mixed>> $options */
-    private static function registry(array $options): Registry
+    /**
+     * @param array<string, array<string, mixed>> $options
+     * @param array<string, string>               $detections
+     */
+    private static function registry(array $options, array $detections = []): Registry
     {
         return new Registry([
-            new FixedProviderFactory(['en' => ['Bonjour' => 'Hello']], [], 'a'),
+            new FixedProviderFactory(['en' => ['Bonjour' => 'Hello']], $detections, 'a'),
             new FixedProviderFactory(['en' => ['Bonjour' => 'Good morning']], [], 'b'),
         ], ['a' => ['factory' => 'a', 'options' => $options['a'] ?? []], 'b' => ['factory' => 'b', 'options' => $options['b'] ?? []]], new InMemoryRateLimiter());
     }
