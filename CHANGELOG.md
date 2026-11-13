@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.x (unreleased)
+## [Unreleased]
+
+## [1.0.0] - 2026-11-13
+
+The first stable version. It requires `omnisense/contracts` `^1.0` with no stability flag, so `composer require omnisense/omnilang` installs it in a project with Composer's default minimum-stability; the 1.x series follows semantic versioning. A tag `vX.Y.Z` is released by `.github/workflows/release.yml` once the package's CI passes on it.
+
+- The README opens on the install line and a first call that needs no account (DeepL answered by the
+  Testing kit's recorded client), and says what each engine needs.
 
 - 2026-11-10, on omnisense/contracts' round 2 (needs contracts 5bac28b; still `^1.0@dev`): a
   limit counted in characters (`"unit": "characters"`) is spent by what each call sends -

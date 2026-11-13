@@ -18,6 +18,33 @@ translation, in four contracts, with a fallback from one engine to the next.
 | [omnilang/amazon](https://github.com/glitchr-omnisense/omnilang-amazon) | translate (formality), glossary (terminologies), documents (HTML, text, DOCX) | IAM credentials (Signature Version 4, no SDK) |
 | [omnilang/libretranslate](https://github.com/glitchr-omnisense/omnilang-libretranslate) | translate (HTML), detect, documents - a self-hosted server | none by default |
 
+## Installation and a first call
+
+```sh
+composer require omnisense/omnilang omnilang/deepl
+```
+
+Every engine needs an account and its credentials (the table above), except LibreTranslate, which needs a server
+of one's own. The first call below needs neither: the recorded client of the Testing kit (omnisense/contracts')
+answers for DeepL, as the tests do:
+
+```php
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilang\Deepl\DeeplFactory;
+use Omnilang\Registry;
+use Omnilang\Testing\RecordedHttpClient;
+
+$http = RecordedHttpClient::routes([            // DeepL's answer, recorded: the application's HTTP client in production
+    '~^POST https://api-free\.deepl\.com/v2/translate$~' => [200, '{"translations": [{"detected_source_language": "FR", "text": "Double room with a view"}]}'],
+]);
+$lang = new Registry([new DeeplFactory($http)], ['deepl' => ['factory' => 'deepl', 'options' => ['key' => 'a-free-key:fx']]]);
+
+echo $lang->translateText('Chambre double avec vue', 'en')->text, "\n";   // Double room with a view
+```
+
+Several engines, one after the other:
+
 ```php
 use Omnilang\Model\{Formality, TranslationQuery};
 use Omnilang\Registry;
@@ -81,7 +108,7 @@ provider, factory, registry, JSON client, usage policies, testing kit) and
 `symfony/http-client-contracts`, nothing else: no framework, no HTTP client of its own (each
 provider requires `symfony/http-client` and takes the application's).
 
-```
+```sh
 composer require omnisense/omnilang omnilang/deepl
 ```
 
